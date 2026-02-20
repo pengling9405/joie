@@ -13,12 +13,11 @@ enum AssistantLayoutMetrics {
     private static let closedHeightRange: ClosedRange<CGFloat> = 28 ... 38
 
     private static let listeningWidth: CGFloat = 560
-    private static let listeningMinHeight: CGFloat = 42
+    private static let listeningMinHeight: CGFloat = 86
 
-    private static let speakingWidthOffset: CGFloat = 440
-    private static let speakingWidthRange: ClosedRange<CGFloat> = 600 ... 760
-    private static let speakingHeight: CGFloat = 180
-    static let canvasSize = CGSize(width: speakingWidthRange.upperBound, height: speakingHeight)
+    private static let speakingWidth: CGFloat = listeningWidth
+    private static let speakingHeight: CGFloat = listeningMinHeight
+    static let canvasSize = CGSize(width: speakingWidth, height: speakingHeight)
 
     static func clampedClosedSize(_ size: CGSize) -> CGSize {
         CGSize(
@@ -34,11 +33,7 @@ enum AssistantLayoutMetrics {
         case .listening:
             return CGSize(width: listeningWidth, height: max(closedSize.height, listeningMinHeight))
         case .speaking:
-            let width = min(
-                max(closedSize.width + speakingWidthOffset, speakingWidthRange.lowerBound),
-                speakingWidthRange.upperBound
-            )
-            return CGSize(width: width, height: speakingHeight)
+            return CGSize(width: speakingWidth, height: speakingHeight)
         }
     }
 }

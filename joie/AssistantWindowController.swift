@@ -16,7 +16,6 @@ final class AssistantCoordinator: ObservableObject {
 
     private var hideTask: Task<Void, Never>?
     private var stopListeningTask: Task<Void, Never>?
-    private var collapseTask: Task<Void, Never>?
     private var interactionSessionID: UInt64 = 0
     private var isListeningSessionActive = false
     private var suppressNextTTSFinishedCallback = false
@@ -34,16 +33,6 @@ final class AssistantCoordinator: ObservableObject {
         response: 0.54,
         dampingFraction: 0.92,
         blendDuration: 0.14
-    )
-    private let collapseToListeningAnimation = Animation.spring(
-        response: 0.36,
-        dampingFraction: 0.82,
-        blendDuration: 0
-    )
-    private let collapseToIdleAnimation = Animation.spring(
-        response: 0.45,
-        dampingFraction: 1.0,
-        blendDuration: 0
     )
 
     func start() {
@@ -96,7 +85,6 @@ final class AssistantCoordinator: ObservableObject {
         interactionSessionID &+= 1
         let sessionID = interactionSessionID
         stopListeningTask?.cancel()
-        collapseTask?.cancel()
         hideTask?.cancel()
         isListeningSessionActive = false
         windowController.refreshClosedNotchMetrics()
@@ -168,34 +156,11 @@ final class AssistantCoordinator: ObservableObject {
 
     private func transitionToIdleAndHide() {
         stopListeningTask?.cancel()
-        collapseTask?.cancel()
         hideTask?.cancel()
         isListeningSessionActive = false
 
-        let cameFromSpeaking = state == .speaking
         liveTranscript = ""
         speakingText = ""
-
-        if cameFromSpeaking {
-            // Match reference feel: collapse from large to medium first, then close to idle notch.
-            withAnimation(collapseToListeningAnimation) {
-                state = .listening
-            }
-            applyWindowSize(animated: true)
-
-            collapseTask = Task { [weak self] in
-                try? await Task.sleep(nanoseconds: 170_000_000)
-                await MainActor.run {
-                    guard let self else { return }
-                    withAnimation(self.collapseToIdleAnimation) {
-                        self.state = .idle
-                    }
-                    self.applyWindowSize(animated: true)
-                    self.scheduleHide(afterNanoseconds: 520_000_000)
-                }
-            }
-            return
-        }
 
         withAnimation(closingAnimation) {
             state = .idle

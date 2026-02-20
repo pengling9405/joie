@@ -3,9 +3,19 @@ import SwiftUI
 struct AssistantView: View {
     @ObservedObject var model: AssistantCoordinator
 
-    @State private var previousState: AssistantState = .idle
-    @State private var showListeningWave = false
-    @State private var waveRevealTask: Task<Void, Never>?
+    private enum VoiceLayout {
+        static let horizontalPadding: CGFloat = 22
+        static let topPadding: CGFloat = 12
+        static let bottomPadding: CGFloat = 14
+        static let contentSpacing: CGFloat = 10
+        static let headerSpacing: CGFloat = 10
+        static let waveformWidth: CGFloat = 28
+        static let waveformHeight: CGFloat = 20
+        static let titleSize: CGFloat = 18
+        static let bodySize: CGFloat = 16
+        static let bodyLineSpacing: CGFloat = 1
+        static let baselineTopCornerRadius: CGFloat = 6
+    }
 
     private let openAnimation = Animation.spring(response: 0.42, dampingFraction: 0.80, blendDuration: 0)
     private let closeAnimation = Animation.spring(response: 0.45, dampingFraction: 1.0, blendDuration: 0)
@@ -35,22 +45,10 @@ struct AssistantView: View {
     }
 
     private var clipShape: NotchShape {
-        switch model.state {
-        case .idle, .listening:
-            NotchShape(topCornerRadius: 6, bottomCornerRadius: 14)
-        case .speaking:
-            NotchShape(topCornerRadius: 19, bottomCornerRadius: 24)
-        }
+        NotchShape(topCornerRadius: 6, bottomCornerRadius: 14)
     }
 
-    private var topCornerRadius: CGFloat {
-        switch model.state {
-        case .idle, .listening:
-            6
-        case .speaking:
-            19
-        }
-    }
+    private var topCornerRadius: CGFloat { 6 }
 
     var body: some View {
         ZStack(alignment: .top) {
@@ -79,18 +77,6 @@ struct AssistantView: View {
             height: AssistantLayoutMetrics.canvasSize.height,
             alignment: .top
         )
-        .onAppear {
-            previousState = model.state
-            showListeningWave = model.state == .listening
-        }
-        .onDisappear {
-            waveRevealTask?.cancel()
-        }
-        .onChange(of: model.state) { newState in
-            let oldState = previousState
-            previousState = newState
-            handleStateTransition(from: oldState, to: newState)
-        }
     }
 
     @ViewBuilder
@@ -110,75 +96,80 @@ struct AssistantView: View {
                 .frame(width: closedSize.width, height: closedSize.height)
 
         case .listening:
-            HStack(spacing: 0) {
-                HStack {
-                    Image(systemName: "waveform")
-                        .font(.system(size: 14, weight: .semibold))
-                        .foregroundStyle(.white.opacity(0.9))
-                }
-                .frame(width: 34, height: 34)
-                .background(Color.white.opacity(0.08))
-                .clipShape(RoundedRectangle(cornerRadius: 10))
-                .padding(.leading, 18)
-
-                Spacer(minLength: 0)
-
-                ListeningEqualizer()
-                    .opacity(showListeningWave ? 1 : 0)
-                    .scaleEffect(showListeningWave ? 1 : 0.72, anchor: .trailing)
-                    .offset(x: showListeningWave ? 0 : 8)
-                    .padding(.trailing, 18)
-            }
+            voiceContent(
+                title: "Listening",
+                text: listeningDisplayText,
+                textColor: listeningTextColor
+            )
             .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .center)))
 
         case .speaking:
-            VStack(alignment: .leading, spacing: 12) {
-                Text("Speaking")
-                    .font(.system(size: 13, weight: .medium))
-                    .foregroundStyle(.white.opacity(0.7))
-
-                Text(displayText)
-                    .font(.system(size: 26, weight: .semibold))
-                    .foregroundStyle(.white)
-                    .lineLimit(4)
-                    .multilineTextAlignment(.leading)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.horizontal, 28)
-            .padding(.top, 24)
-            .padding(.bottom, 22)
-            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            voiceContent(
+                title: "Speaking",
+                text: speakingDisplayText,
+                textColor: Color.white.opacity(0.90)
+            )
             .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .center)))
         }
     }
 
-    private var displayText: String {
+    private var speakingDisplayText: String {
         let text = model.speakingText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? "…" : text
+        return text.isEmpty ? "..." : text
     }
 
-    private func handleStateTransition(from oldState: AssistantState, to newState: AssistantState) {
-        waveRevealTask?.cancel()
+    private var listeningDisplayText: String {
+        let text = model.liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? "..." : text
+    }
 
-        switch newState {
-        case .idle:
-            showListeningWave = false
+    private var listeningTextColor: Color {
+        let text = model.liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
+        return text.isEmpty ? Color.white.opacity(0.34) : Color.white.opacity(0.90)
+    }
 
-        case .listening:
-            showListeningWave = false
+    private var contentHorizontalPadding: CGFloat {
+        // Keep visual inset consistent when top corner radius grows (e.g. speaking state).
+        VoiceLayout.horizontalPadding + max(0, topCornerRadius - VoiceLayout.baselineTopCornerRadius)
+    }
 
-            waveRevealTask = Task { @MainActor in
-                let revealDelay: UInt64 = oldState == .idle ? 260_000_000 : 180_000_000
-                try? await Task.sleep(nanoseconds: revealDelay)
-                guard !Task.isCancelled, model.state == .listening else { return }
-                withAnimation(.easeOut(duration: 0.22)) {
-                    showListeningWave = true
-                }
-            }
+    @ViewBuilder
+    private func statusHeader(title: String) -> some View {
+        HStack(spacing: VoiceLayout.headerSpacing) {
+            ListeningEqualizer()
+                .frame(
+                    width: VoiceLayout.waveformWidth,
+                    height: VoiceLayout.waveformHeight,
+                    alignment: .leading
+                )
+                .opacity(0.95)
 
-        case .speaking:
-            showListeningWave = false
+            Text(title)
+                .font(.system(size: VoiceLayout.titleSize, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.88))
+
+            Spacer(minLength: 0)
         }
+    }
+
+    @ViewBuilder
+    private func voiceContent(title: String, text: String, textColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: VoiceLayout.contentSpacing) {
+            statusHeader(title: title)
+
+            Text(text)
+                .font(.system(size: VoiceLayout.bodySize, weight: .medium))
+                .foregroundStyle(textColor)
+                .lineLimit(4)
+                .truncationMode(.tail)
+                .lineSpacing(VoiceLayout.bodyLineSpacing)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, contentHorizontalPadding)
+        .padding(.top, VoiceLayout.topPadding)
+        .padding(.bottom, VoiceLayout.bottomPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 }
 

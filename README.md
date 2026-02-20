@@ -49,9 +49,12 @@ JOIE_DEBUG_EVENTTAP=1 .derivedData/Build/Products/Debug/joie.app/Contents/MacOS/
 - [x] `Fn` 按住开始识别、松开结束识别并进入朗读
 - [x] 朗读中再次按 `Fn` 可立即打断并重新进入识别
 - [x] Notch 居中定位（基于硬件 Notch 中心）
-- [x] `speaking -> listening -> idle` 两段式收起过渡
-- [x] 修复 `speaking` 被打断时偶发回落 `idle` 的竞态问题
 - [x] 忽略本地构建产物目录 `.derivedData/`
+- [x] 修复 `speaking` 被打断时偶发回落 `idle` 的竞态问题
+- [x] ASR 流式展示：按住 `Fn` 时实时显示识别中的文本
+- [x] Listening/Speaking UI 结构统一：顶部 `waveform + title`，下方文本
+- [x] Listening/Speaking 尺寸、间距、边框与背景样式保持一致
+- [x] Speaking 完成后直接回到 `idle`（不再经过 `listening`）
 
 ### 待优化
 

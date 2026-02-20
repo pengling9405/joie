@@ -73,8 +73,10 @@ final class SpeechManager {
 
                 if let result {
                     let text = result.bestTranscription.formattedString
-                    self.lastTranscript = text
-                    self.partialHandler?(text)
+                    if text != self.lastTranscript {
+                        self.lastTranscript = text
+                        self.partialHandler?(text)
+                    }
 
                     if result.isFinal {
                         self.completeRecognition(with: text)
