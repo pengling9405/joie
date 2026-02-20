@@ -54,7 +54,12 @@ JOIE_DEBUG_EVENTTAP=1 .derivedData/Build/Products/Debug/joie.app/Contents/MacOS/
 - [x] ASR 流式展示：按住 `Fn` 时实时显示识别中的文本
 - [x] Listening/Speaking UI 结构统一：顶部 `waveform + title`，下方文本
 - [x] Listening/Speaking 尺寸、间距、边框与背景样式保持一致
-- [x] Speaking 完成后直接回到 `idle`（不再经过 `listening`）
+- [x] 增加 `thinking` 状态：`listening -> thinking -> speaking`
+- [x] ASR locale 自动跟随系统语言并回退到中文可用 locale
+- [x] TTS 按文本语言自动选择语音（中文文本用中文 voice，英文文本用英文 voice）
+- [x] Speaking 文本支持 Markdown 清洗（UI 展示与 TTS 播报均去除语法噪音）
+- [x] Speaking 文本超过 10 行时固定高度并支持滚动查看，不再使用 `...` 截断
+- [x] Speaking 播报结束后保留结果，右上提供复制/关闭按钮；关闭后回到 `idle`
 
 ### 待优化
 

@@ -4,7 +4,6 @@ import Speech
 @MainActor
 final class SpeechManager {
     private let audioEngine = AVAudioEngine()
-    private let recognizer = SFSpeechRecognizer()
 
     private var recognitionRequest: SFSpeechAudioBufferRecognitionRequest?
     private var recognitionTask: SFSpeechRecognitionTask?
@@ -35,6 +34,7 @@ final class SpeechManager {
         guard AVCaptureDevice.authorizationStatus(for: .audio) == .authorized else {
             throw SpeechError.microphoneNotAuthorized
         }
+        let recognizer = Self.makeRecognizer()
         guard let recognizer, recognizer.isAvailable else {
             throw SpeechError.recognizerUnavailable
         }
@@ -113,7 +113,7 @@ final class SpeechManager {
             stopContinuation = continuation
             stopTimeoutTask?.cancel()
             stopTimeoutTask = Task { @MainActor [weak self] in
-                try? await Task.sleep(nanoseconds: 600_000_000)
+                try? await Task.sleep(nanoseconds: 1_500_000_000)
                 guard let self else { return }
                 if self.stopContinuation != nil {
                     self.completeRecognition(with: self.lastTranscript)
@@ -167,6 +167,56 @@ final class SpeechManager {
         } else {
             pendingStopText = text
         }
+    }
+
+    private static func makeRecognizer() -> SFSpeechRecognizer? {
+        let supportedLocales = Array(SFSpeechRecognizer.supportedLocales())
+
+        for preferred in Locale.preferredLanguages {
+            for candidate in localeCandidates(from: preferred) {
+                if let matched = supportedLocales.first(where: { normalizedLocaleID($0.identifier) == candidate }) {
+                    return SFSpeechRecognizer(locale: matched)
+                }
+            }
+        }
+
+        if let zhCN = supportedLocales.first(where: { normalizedLocaleID($0.identifier) == "zh-cn" }) {
+            return SFSpeechRecognizer(locale: zhCN)
+        }
+
+        return SFSpeechRecognizer()
+    }
+
+    private static func localeCandidates(from preferredLanguage: String) -> [String] {
+        let normalizedInput = preferredLanguage.replacingOccurrences(of: "_", with: "-")
+        let parts = normalizedInput
+            .split(separator: "-")
+            .map { String($0) }
+
+        let language = parts.first?.lowercased()
+        let region = parts.dropFirst().first(where: { $0.count == 2 || $0.count == 3 })?.lowercased()
+
+        var candidates: [String] = []
+        if let language, let region {
+            candidates.append("\(language)-\(region)")
+        }
+        if let language {
+            candidates.append(language)
+        }
+        candidates.append(normalizedLocaleID(normalizedInput))
+
+        var deduped: [String] = []
+        var seen = Set<String>()
+        for candidate in candidates where !candidate.isEmpty {
+            if seen.insert(candidate).inserted {
+                deduped.append(candidate)
+            }
+        }
+        return deduped
+    }
+
+    private static func normalizedLocaleID(_ identifier: String) -> String {
+        identifier.replacingOccurrences(of: "_", with: "-").lowercased()
     }
 }
 

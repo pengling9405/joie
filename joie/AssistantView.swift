@@ -9,6 +9,8 @@ struct AssistantView: View {
         static let bottomPadding: CGFloat = 14
         static let contentSpacing: CGFloat = 10
         static let headerSpacing: CGFloat = 10
+        static let actionSpacing: CGFloat = 8
+        static let actionButtonSize: CGFloat = 26
         static let waveformWidth: CGFloat = 28
         static let waveformHeight: CGFloat = 20
         static let titleSize: CGFloat = 18
@@ -17,31 +19,21 @@ struct AssistantView: View {
         static let baselineTopCornerRadius: CGFloat = 6
     }
 
-    private let openAnimation = Animation.spring(response: 0.42, dampingFraction: 0.80, blendDuration: 0)
-    private let closeAnimation = Animation.spring(response: 0.45, dampingFraction: 1.0, blendDuration: 0)
-    private let speakingAnimation = Animation.spring(response: 0.40, dampingFraction: 0.84, blendDuration: 0)
-
-    private var textAnimation: Animation {
-        .easeOut(duration: 0.18)
-    }
-
-    private var notchAnimation: Animation {
-        switch model.state {
-        case .idle:
-            closeAnimation
-        case .listening:
-            openAnimation
-        case .speaking:
-            speakingAnimation
-        }
-    }
-
     private var closedSize: CGSize {
         model.closedNotchSize
     }
 
     private var currentNotchSize: CGSize {
-        AssistantLayoutMetrics.size(for: model.state, closedSize: closedSize)
+        AssistantLayoutMetrics.size(
+            for: model.state,
+            closedSize: closedSize,
+            hasListeningText: listeningDisplayText != nil,
+            speakingText: model.speakingText
+        )
+    }
+
+    private var notchClearance: CGFloat {
+        AssistantLayoutMetrics.notchClearance(for: closedSize)
     }
 
     private var clipShape: NotchShape {
@@ -68,9 +60,6 @@ struct AssistantView: View {
                         .padding(.horizontal, topCornerRadius)
                 }
                 .overlay(strokeOverlay)
-                .animation(textAnimation, value: model.liveTranscript)
-                .animation(textAnimation, value: model.speakingText)
-                .animation(notchAnimation, value: model.state)
         }
         .frame(
             width: AssistantLayoutMetrics.canvasSize.width,
@@ -96,36 +85,39 @@ struct AssistantView: View {
                 .frame(width: closedSize.width, height: closedSize.height)
 
         case .listening:
-            voiceContent(
+            listeningContent(
                 title: "Listening",
                 text: listeningDisplayText,
-                textColor: listeningTextColor
+                textColor: Color.white.opacity(0.90),
+                lineLimit: 4
             )
-            .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .center)))
+
+        case .thinking:
+            thinkingContent(
+                title: "Thinking",
+                text: nil,
+                textColor: Color.white.opacity(0.80),
+                lineLimit: 0
+            )
 
         case .speaking:
-            voiceContent(
+            speakingContent(
                 title: "Speaking",
                 text: speakingDisplayText,
-                textColor: Color.white.opacity(0.90)
+                textColor: Color.white.opacity(0.90),
+                lineLimit: 10
             )
-            .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .center)))
         }
     }
 
     private var speakingDisplayText: String {
         let text = model.speakingText.trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? "..." : text
+        return text
     }
 
-    private var listeningDisplayText: String {
+    private var listeningDisplayText: String? {
         let text = model.liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? "..." : text
-    }
-
-    private var listeningTextColor: Color {
-        let text = model.liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines)
-        return text.isEmpty ? Color.white.opacity(0.34) : Color.white.opacity(0.90)
+        return text.isEmpty ? nil : text
     }
 
     private var contentHorizontalPadding: CGFloat {
@@ -134,7 +126,7 @@ struct AssistantView: View {
     }
 
     @ViewBuilder
-    private func statusHeader(title: String) -> some View {
+    private func statusHeader(title: String, showsSpeakingActions: Bool = false) -> some View {
         HStack(spacing: VoiceLayout.headerSpacing) {
             ListeningEqualizer()
                 .frame(
@@ -149,27 +141,113 @@ struct AssistantView: View {
                 .foregroundStyle(Color.white.opacity(0.88))
 
             Spacer(minLength: 0)
+
+            if showsSpeakingActions {
+                HStack(spacing: VoiceLayout.actionSpacing) {
+                    speakingActionButton(symbolName: "doc.on.doc") {
+                        model.copySpeakingTextToPasteboard()
+                    }
+                    speakingActionButton(symbolName: "xmark") {
+                        model.closeSpeakingAndReturnIdle()
+                    }
+                }
+                .transition(.opacity.combined(with: .scale(scale: 0.94, anchor: .trailing)))
+            }
         }
     }
 
     @ViewBuilder
-    private func voiceContent(title: String, text: String, textColor: Color) -> some View {
+    private func listeningContent(title: String, text: String?, textColor: Color, lineLimit: Int) -> some View {
+        voiceContent(title: title, text: text, textColor: textColor, lineLimit: lineLimit)
+    }
+
+    @ViewBuilder
+    private func thinkingContent(title: String, text: String?, textColor: Color, lineLimit: Int) -> some View {
+        voiceContent(title: title, text: text, textColor: textColor, lineLimit: lineLimit)
+    }
+
+    @ViewBuilder
+    private func speakingContent(title: String, text: String?, textColor: Color, lineLimit: Int) -> some View {
+        VStack(alignment: .leading, spacing: VoiceLayout.contentSpacing) {
+            statusHeader(title: title, showsSpeakingActions: model.speakingActionsVisible)
+
+            if let text, !text.isEmpty {
+                SpeakingScrollableText(
+                    text: text,
+                    textColor: textColor,
+                    bodyHeight: AssistantLayoutMetrics.speakingVisibleBodyHeight(for: text),
+                    bodySize: VoiceLayout.bodySize,
+                    lineSpacing: VoiceLayout.bodyLineSpacing
+                )
+            }
+        }
+        .padding(.horizontal, contentHorizontalPadding)
+        .padding(.top, VoiceLayout.topPadding + notchClearance)
+        .padding(.bottom, VoiceLayout.bottomPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+
+    private func speakingActionButton(symbolName: String, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbolName)
+                .font(.system(size: 12, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.86))
+                .frame(width: VoiceLayout.actionButtonSize, height: VoiceLayout.actionButtonSize)
+                .background(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .fill(Color.white.opacity(0.10))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 8, style: .continuous)
+                        .stroke(Color.white.opacity(0.16), lineWidth: 1)
+                )
+        }
+        .buttonStyle(.plain)
+    }
+
+    @ViewBuilder
+    private func voiceContent(title: String, text: String?, textColor: Color, lineLimit: Int) -> some View {
         VStack(alignment: .leading, spacing: VoiceLayout.contentSpacing) {
             statusHeader(title: title)
 
-            Text(text)
-                .font(.system(size: VoiceLayout.bodySize, weight: .medium))
-                .foregroundStyle(textColor)
-                .lineLimit(4)
-                .truncationMode(.tail)
-                .lineSpacing(VoiceLayout.bodyLineSpacing)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, alignment: .leading)
+            if let text, !text.isEmpty {
+                Text(text)
+                    .font(.system(size: VoiceLayout.bodySize, weight: .medium))
+                    .foregroundStyle(textColor)
+                    .lineLimit(lineLimit <= 0 ? nil : lineLimit)
+                    .truncationMode(.tail)
+                    .lineSpacing(VoiceLayout.bodyLineSpacing)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
         }
         .padding(.horizontal, contentHorizontalPadding)
-        .padding(.top, VoiceLayout.topPadding)
+        .padding(.top, VoiceLayout.topPadding + notchClearance)
         .padding(.bottom, VoiceLayout.bottomPadding)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+    }
+}
+
+private struct SpeakingScrollableText: View {
+    let text: String
+    let textColor: Color
+    let bodyHeight: CGFloat
+    let bodySize: CGFloat
+    let lineSpacing: CGFloat
+
+    var body: some View {
+        ScrollView(.vertical, showsIndicators: false) {
+            Text(text)
+                .font(.system(size: bodySize, weight: .medium))
+                .foregroundStyle(textColor)
+                .lineLimit(nil)
+                .lineSpacing(lineSpacing)
+                .multilineTextAlignment(.leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(height: max(1, ceil(bodyHeight)), alignment: .top)
+        .clipped()
     }
 }
 

@@ -13,7 +13,8 @@
 		0D9A3C1D7B2F4E5A6C7D8E9F /* AssistantWindowController.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D9A3C1D7B2F4E5A6C7D8E9F /* AssistantWindowController.swift */; };
 		0E9A3C1D7B2F4E5A6C7D8E9F /* SpeechManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1E9A3C1D7B2F4E5A6C7D8E9F /* SpeechManager.swift */; };
 		0F9A3C1D7B2F4E5A6C7D8E9F /* EventTapManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1F9A3C1D7B2F4E5A6C7D8E9F /* EventTapManager.swift */; };
-		109A3C1D7B2F4E5A6C7D8E9F /* TTSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 209A3C1D7B2F4E5A6C7D8E9F /* TTSManager.swift */; };
+			109A3C1D7B2F4E5A6C7D8E9F /* TTSManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = 209A3C1D7B2F4E5A6C7D8E9F /* TTSManager.swift */; };
+			11A9A3C1D7B2F4E5A6C7D8E9 /* GatewayClient.swift in Sources */ = {isa = PBXBuildFile; fileRef = 21A9A3C1D7B2F4E5A6C7D8E9 /* GatewayClient.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -23,8 +24,9 @@
 		1D9A3C1D7B2F4E5A6C7D8E9F /* AssistantWindowController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AssistantWindowController.swift; sourceTree = "<group>"; };
 		1E9A3C1D7B2F4E5A6C7D8E9F /* SpeechManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SpeechManager.swift; sourceTree = "<group>"; };
 		1F9A3C1D7B2F4E5A6C7D8E9F /* EventTapManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = EventTapManager.swift; sourceTree = "<group>"; };
-		209A3C1D7B2F4E5A6C7D8E9F /* TTSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSManager.swift; sourceTree = "<group>"; };
-		219A3C1D7B2F4E5A6C7D8E9F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+			209A3C1D7B2F4E5A6C7D8E9F /* TTSManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TTSManager.swift; sourceTree = "<group>"; };
+			21A9A3C1D7B2F4E5A6C7D8E9 /* GatewayClient.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatewayClient.swift; sourceTree = "<group>"; };
+			219A3C1D7B2F4E5A6C7D8E9F /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		229A3C1D7B2F4E5A6C7D8E9F /* joie.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; path = joie.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -54,11 +56,12 @@
 				1B9A3C1D7B2F4E5A6C7D8E9F /* AssistantState.swift */,
 				1D9A3C1D7B2F4E5A6C7D8E9F /* AssistantWindowController.swift */,
 				1C9A3C1D7B2F4E5A6C7D8E9F /* AssistantView.swift */,
-				1E9A3C1D7B2F4E5A6C7D8E9F /* SpeechManager.swift */,
-				1F9A3C1D7B2F4E5A6C7D8E9F /* EventTapManager.swift */,
-				209A3C1D7B2F4E5A6C7D8E9F /* TTSManager.swift */,
-				219A3C1D7B2F4E5A6C7D8E9F /* Info.plist */,
-			);
+					1E9A3C1D7B2F4E5A6C7D8E9F /* SpeechManager.swift */,
+					1F9A3C1D7B2F4E5A6C7D8E9F /* EventTapManager.swift */,
+					209A3C1D7B2F4E5A6C7D8E9F /* TTSManager.swift */,
+					21A9A3C1D7B2F4E5A6C7D8E9 /* GatewayClient.swift */,
+					219A3C1D7B2F4E5A6C7D8E9F /* Info.plist */,
+				);
 			path = joie;
 			sourceTree = "<group>";
 		};
@@ -137,10 +140,11 @@
 				0B9A3C1D7B2F4E5A6C7D8E9F /* AssistantState.swift in Sources */,
 				0C9A3C1D7B2F4E5A6C7D8E9F /* AssistantView.swift in Sources */,
 				0D9A3C1D7B2F4E5A6C7D8E9F /* AssistantWindowController.swift in Sources */,
-				0E9A3C1D7B2F4E5A6C7D8E9F /* SpeechManager.swift in Sources */,
-				0F9A3C1D7B2F4E5A6C7D8E9F /* EventTapManager.swift in Sources */,
-				109A3C1D7B2F4E5A6C7D8E9F /* TTSManager.swift in Sources */,
-			);
+					0E9A3C1D7B2F4E5A6C7D8E9F /* SpeechManager.swift in Sources */,
+					0F9A3C1D7B2F4E5A6C7D8E9F /* EventTapManager.swift in Sources */,
+					109A3C1D7B2F4E5A6C7D8E9F /* TTSManager.swift in Sources */,
+					11A9A3C1D7B2F4E5A6C7D8E9 /* GatewayClient.swift in Sources */,
+				);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */

@@ -3,16 +3,19 @@ import CoreGraphics
 import Foundation
 
 final class EventTapManager {
-    var onFnDown: (() -> Void)?
-    var onFnUp: (() -> Void)?
+    var onFnDown: (@MainActor () -> Void)?
+    var onFnUp: (@MainActor () -> Void)?
+    var onEscapeDown: (@MainActor () -> Void)?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
     private var runLoop: CFRunLoop?
     private var thread: Thread?
     private var isFnPressed = false
+    private var hasSeenSecondaryFnTrue = false
     private var shouldStop = false
     private let fnKeyCode: Int64 = 63 // kVK_Function
+    private let escapeKeyCode: Int64 = 53 // kVK_Escape
     private let debugLoggingEnabled = ProcessInfo.processInfo.environment["JOIE_DEBUG_EVENTTAP"] == "1"
 
     func start() {
@@ -54,6 +57,7 @@ final class EventTapManager {
         runLoop = nil
         thread = nil
         isFnPressed = false
+        hasSeenSecondaryFnTrue = false
     }
 
     private func startOnCurrentThread() {
@@ -82,45 +86,58 @@ final class EventTapManager {
 
             switch type {
             case .flagsChanged:
-                let fnPressedNow = event.flags.contains(.maskSecondaryFn)
-
+                let eventFnPressed = event.flags.contains(.maskSecondaryFn)
                 if manager.debugLoggingEnabled {
-                    manager.log("flagsChanged keyCode=\(keyCode) secondaryFn=\(fnPressedNow)")
+                    manager.log("flagsChanged keyCode=\(keyCode) eventSecondaryFn=\(eventFnPressed)")
+                }
+                if eventFnPressed {
+                    manager.hasSeenSecondaryFnTrue = true
                 }
 
-                if fnPressedNow && !manager.isFnPressed {
-                    manager.isFnPressed = true
-                    manager.log("Fn down (flagsChanged)")
-                    manager.onFnDown?()
-                } else if !fnPressedNow && manager.isFnPressed {
-                    manager.isFnPressed = false
-                    manager.log("Fn up (flagsChanged)")
-                    manager.onFnUp?()
-                } else if keyCode == manager.fnKeyCode {
-                    // 部分键盘/系统不会正确设置 .maskSecondaryFn，但仍会发出 flagsChanged（keyCode=63）。
-                    if manager.isFnPressed {
-                        manager.isFnPressed = false
-                        manager.log("Fn up (keyCode)")
-                        manager.onFnUp?()
+                if keyCode == manager.fnKeyCode {
+                    if manager.hasSeenSecondaryFnTrue {
+                        if eventFnPressed && !manager.isFnPressed {
+                            manager.isFnPressed = true
+                            manager.log("Fn down (flagsChanged)")
+                            manager.invokeOnMain(manager.onFnDown)
+                        } else if !eventFnPressed && manager.isFnPressed {
+                            manager.isFnPressed = false
+                            manager.log("Fn up (flagsChanged)")
+                            manager.invokeOnMain(manager.onFnUp)
+                        }
                     } else {
-                        manager.isFnPressed = true
-                        manager.log("Fn down (keyCode)")
-                        manager.onFnDown?()
+                        // Fallback for environments that never set maskSecondaryFn.
+                        if manager.isFnPressed {
+                            manager.isFnPressed = false
+                            manager.log("Fn up (keyCode)")
+                            manager.invokeOnMain(manager.onFnUp)
+                        } else {
+                            manager.isFnPressed = true
+                            manager.log("Fn down (keyCode)")
+                            manager.invokeOnMain(manager.onFnDown)
+                        }
                     }
+                    break
                 }
 
             case .keyDown:
+                let isAutoRepeat = event.getIntegerValueField(.keyboardEventAutorepeat) == 1
+                if keyCode == manager.escapeKeyCode, !isAutoRepeat {
+                    manager.log("ESC down")
+                    manager.invokeOnMain(manager.onEscapeDown)
+                }
+
                 if keyCode == manager.fnKeyCode, !manager.isFnPressed {
                     manager.isFnPressed = true
                     manager.log("Fn down (keyDown)")
-                    manager.onFnDown?()
+                    manager.invokeOnMain(manager.onFnDown)
                 }
 
             case .keyUp:
                 if keyCode == manager.fnKeyCode, manager.isFnPressed {
                     manager.isFnPressed = false
                     manager.log("Fn up (keyUp)")
-                    manager.onFnUp?()
+                    manager.invokeOnMain(manager.onFnUp)
                 }
 
             default:
@@ -183,6 +200,15 @@ final class EventTapManager {
     private func log(_ message: String) {
         guard debugLoggingEnabled else { return }
         print("[joie] \(message)")
+    }
+
+    private func invokeOnMain(_ action: (@MainActor () -> Void)?) {
+        guard let action else { return }
+        DispatchQueue.main.async {
+            MainActor.assumeIsolated {
+                action()
+            }
+        }
     }
 
     private func ensureAccessibilityPermission() -> Bool {
