@@ -133,6 +133,7 @@ final class AssistantCoordinator: ObservableObject {
                 guard text != self.liveTranscript else { return }
                 self.liveTranscript = text
                 self.applyWindowSize(animated: true)
+                self.updateWindowInteractivity()
             }
         } catch {
             print("[joie] 无法开始语音识别：\(error.localizedDescription)")
@@ -238,11 +239,10 @@ final class AssistantCoordinator: ObservableObject {
     }
 
     private func applyWindowSize(animated: Bool) {
-        let hasListeningText = !liveTranscript.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
         let size = AssistantLayoutMetrics.size(
             for: state,
             closedSize: closedNotchSize,
-            hasListeningText: hasListeningText,
+            listeningText: liveTranscript,
             speakingText: speakingText
         )
         windowController.update(contentSize: size, animated: animated)
@@ -451,7 +451,9 @@ final class AssistantCoordinator: ObservableObject {
     }
 
     private func updateWindowInteractivity() {
-        let interactive = state == .speaking
+        let interactive =
+            state == .speaking ||
+            (state == .listening && AssistantLayoutMetrics.listeningHasOverflow(for: liveTranscript))
         windowController.setInteractive(interactive)
     }
 

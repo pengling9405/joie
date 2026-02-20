@@ -15,7 +15,7 @@ enum AssistantLayoutMetrics {
     private static let closedHeightRange: ClosedRange<CGFloat> = 28 ... 38
 
     private static let listeningWidth: CGFloat = 560
-    private static let listeningBodyHeight: CGFloat = 26
+    private static let listeningMaxLines = 10
     private static let speakingMaxLines = 10
     private static let contentHorizontalPadding: CGFloat = 22
     private static let contentTopPadding: CGFloat = 12
@@ -26,7 +26,7 @@ enum AssistantLayoutMetrics {
     private static let bodyLineSpacing: CGFloat = 1
     // Keep a small reserve to avoid clipping descenders during dynamic height transitions,
     // but avoid making the bottom padding look heavier than the top.
-    private static let speakingSafetyInset: CGFloat = 4
+    private static let textSafetyInset: CGFloat = 4
     // Tune header vertical alignment so content starts close to notch baseline instead of
     // being pushed too far down in expanded states.
     private static let notchClearanceOffset: CGFloat = 26
@@ -45,7 +45,7 @@ enum AssistantLayoutMetrics {
     static func size(
         for state: AssistantState,
         closedSize: CGSize,
-        hasListeningText: Bool,
+        listeningText: String,
         speakingText: String
     ) -> CGSize {
         switch state {
@@ -53,10 +53,13 @@ enum AssistantLayoutMetrics {
             return closedSize
         case .listening:
             let headerOnlyHeight = contentHeaderHeight(closedSize: closedSize)
-            let targetHeight =
-                hasListeningText
-                ? headerOnlyHeight + contentSpacing + listeningBodyHeight
-                : headerOnlyHeight
+            let cleaned = listeningText.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !cleaned.isEmpty else {
+                return CGSize(width: listeningWidth, height: max(closedSize.height, ceil(headerOnlyHeight)))
+            }
+
+            let metrics = bodyMetrics(for: cleaned, maxLines: listeningMaxLines)
+            let targetHeight = headerOnlyHeight + contentSpacing + metrics.visibleBodyHeight + textSafetyInset
             return CGSize(width: listeningWidth, height: max(closedSize.height, ceil(targetHeight)))
         case .thinking:
             return CGSize(
@@ -73,12 +76,20 @@ enum AssistantLayoutMetrics {
         max(0, closedSize.height - notchClearanceOffset)
     }
 
+    static func listeningVisibleBodyHeight(for text: String) -> CGFloat {
+        bodyMetrics(for: text, maxLines: listeningMaxLines).visibleBodyHeight
+    }
+
+    static func listeningHasOverflow(for text: String) -> Bool {
+        bodyMetrics(for: text, maxLines: listeningMaxLines).measuredLines > listeningMaxLines
+    }
+
     static func speakingVisibleBodyHeight(for text: String) -> CGFloat {
-        speakingBodyMetrics(for: text).visibleBodyHeight
+        bodyMetrics(for: text, maxLines: speakingMaxLines).visibleBodyHeight
     }
 
     static func speakingHasOverflow(for text: String) -> Bool {
-        speakingBodyMetrics(for: text).measuredLines > speakingMaxLines
+        bodyMetrics(for: text, maxLines: speakingMaxLines).measuredLines > speakingMaxLines
     }
 
     private static func contentHeaderHeight(closedSize: CGSize) -> CGFloat {
@@ -89,24 +100,24 @@ enum AssistantLayoutMetrics {
         let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else { return contentHeaderHeight(closedSize: closedSize) }
 
-        let metrics = speakingBodyMetrics(for: cleaned)
+        let metrics = bodyMetrics(for: cleaned, maxLines: speakingMaxLines)
 
         let fullHeight = contentHeaderHeight(closedSize: closedSize) +
             contentSpacing +
             metrics.visibleBodyHeight +
-            speakingSafetyInset
+            textSafetyInset
         return min(speakingMaxHeight, ceil(fullHeight))
     }
 
-    private struct SpeakingBodyMetrics {
+    private struct BodyMetrics {
         let measuredLines: Int
         let visibleBodyHeight: CGFloat
     }
 
-    private static func speakingBodyMetrics(for text: String) -> SpeakingBodyMetrics {
+    private static func bodyMetrics(for text: String, maxLines: Int) -> BodyMetrics {
         let cleaned = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !cleaned.isEmpty else {
-            return SpeakingBodyMetrics(measuredLines: 0, visibleBodyHeight: 0)
+            return BodyMetrics(measuredLines: 0, visibleBodyHeight: 0)
         }
 
         let maxTextWidth = speakingWidth - (contentHorizontalPadding * 2)
@@ -133,12 +144,12 @@ enum AssistantLayoutMetrics {
 
         let lineHeight = max(1, ceil(singleLine))
         let measuredLines = max(1, Int(ceil(ceil(bounding.height) / lineHeight)))
-        let visibleLines = min(speakingMaxLines, measuredLines)
+        let visibleLines = min(maxLines, measuredLines)
         let visibleBodyHeight =
             (lineHeight * CGFloat(visibleLines)) +
             (bodyLineSpacing * CGFloat(max(0, visibleLines - 1)))
 
-        return SpeakingBodyMetrics(
+        return BodyMetrics(
             measuredLines: measuredLines,
             visibleBodyHeight: visibleBodyHeight
         )

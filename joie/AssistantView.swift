@@ -27,7 +27,7 @@ struct AssistantView: View {
         AssistantLayoutMetrics.size(
             for: model.state,
             closedSize: closedSize,
-            hasListeningText: listeningDisplayText != nil,
+            listeningText: model.liveTranscript,
             speakingText: model.speakingText
         )
     }
@@ -88,24 +88,21 @@ struct AssistantView: View {
             listeningContent(
                 title: "Listening",
                 text: listeningDisplayText,
-                textColor: Color.white.opacity(0.90),
-                lineLimit: 4
+                textColor: Color.white.opacity(0.90)
             )
 
         case .thinking:
             thinkingContent(
                 title: "Thinking",
                 text: nil,
-                textColor: Color.white.opacity(0.80),
-                lineLimit: 0
+                textColor: Color.white.opacity(0.80)
             )
 
         case .speaking:
             speakingContent(
                 title: "Speaking",
                 text: speakingDisplayText,
-                textColor: Color.white.opacity(0.90),
-                lineLimit: 10
+                textColor: Color.white.opacity(0.90)
             )
         }
     }
@@ -157,17 +154,33 @@ struct AssistantView: View {
     }
 
     @ViewBuilder
-    private func listeningContent(title: String, text: String?, textColor: Color, lineLimit: Int) -> some View {
-        voiceContent(title: title, text: text, textColor: textColor, lineLimit: lineLimit)
+    private func listeningContent(title: String, text: String?, textColor: Color) -> some View {
+        VStack(alignment: .leading, spacing: VoiceLayout.contentSpacing) {
+            statusHeader(title: title)
+
+            if let text, !text.isEmpty {
+                SpeakingScrollableText(
+                    text: text,
+                    textColor: textColor,
+                    bodyHeight: AssistantLayoutMetrics.listeningVisibleBodyHeight(for: text),
+                    bodySize: VoiceLayout.bodySize,
+                    lineSpacing: VoiceLayout.bodyLineSpacing
+                )
+            }
+        }
+        .padding(.horizontal, contentHorizontalPadding)
+        .padding(.top, VoiceLayout.topPadding + notchClearance)
+        .padding(.bottom, VoiceLayout.bottomPadding)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     @ViewBuilder
-    private func thinkingContent(title: String, text: String?, textColor: Color, lineLimit: Int) -> some View {
-        voiceContent(title: title, text: text, textColor: textColor, lineLimit: lineLimit)
+    private func thinkingContent(title: String, text: String?, textColor: Color) -> some View {
+        voiceContent(title: title, text: text, textColor: textColor)
     }
 
     @ViewBuilder
-    private func speakingContent(title: String, text: String?, textColor: Color, lineLimit: Int) -> some View {
+    private func speakingContent(title: String, text: String?, textColor: Color) -> some View {
         VStack(alignment: .leading, spacing: VoiceLayout.contentSpacing) {
             statusHeader(title: title, showsSpeakingActions: model.speakingActionsVisible)
 
@@ -206,7 +219,7 @@ struct AssistantView: View {
     }
 
     @ViewBuilder
-    private func voiceContent(title: String, text: String?, textColor: Color, lineLimit: Int) -> some View {
+    private func voiceContent(title: String, text: String?, textColor: Color) -> some View {
         VStack(alignment: .leading, spacing: VoiceLayout.contentSpacing) {
             statusHeader(title: title)
 
@@ -214,8 +227,7 @@ struct AssistantView: View {
                 Text(text)
                     .font(.system(size: VoiceLayout.bodySize, weight: .medium))
                     .foregroundStyle(textColor)
-                    .lineLimit(lineLimit <= 0 ? nil : lineLimit)
-                    .truncationMode(.tail)
+                    .lineLimit(nil)
                     .lineSpacing(VoiceLayout.bodyLineSpacing)
                     .multilineTextAlignment(.leading)
                     .frame(maxWidth: .infinity, alignment: .leading)

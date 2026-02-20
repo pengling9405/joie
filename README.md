@@ -59,6 +59,8 @@ JOIE_DEBUG_EVENTTAP=1 .derivedData/Build/Products/Debug/joie.app/Contents/MacOS/
 - [x] TTS 按文本语言自动选择语音（中文文本用中文 voice，英文文本用英文 voice）
 - [x] Speaking 文本支持 Markdown 清洗（UI 展示与 TTS 播报均去除语法噪音）
 - [x] Speaking 文本超过 10 行时固定高度并支持滚动查看，不再使用 `...` 截断
+- [x] Listening 文本按内容动态增高（最多 10 行），超出时支持滚动查看
+- [x] Listening 文本超出可视高度时启用窗口交互，支持滚动操作
 - [x] Speaking 播报结束后保留结果，右上提供复制/关闭按钮；关闭后回到 `idle`
 
 ### 待优化
